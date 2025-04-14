@@ -79,6 +79,7 @@ async function backtest(symbol, config = { macdWeight: 20, trendWeight: 20, perc
 export default function ShortTermBreakoutScanner() {
   const [tickers, setTickers] = useState([]);
   const [timestamp, setTimestamp] = useState(null);
+  const [scored, setScored] = useState([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -98,6 +99,26 @@ export default function ShortTermBreakoutScanner() {
 
         setTickers(list);
         setTimestamp(Date.now());
+
+        const scoredList = await Promise.all(
+          list.map(async (item) => {
+            try {
+              const res = await fetch(`${BINANCE_KLINE_API}?symbol=${item.symbol}&interval=1m&limit=100`);
+              const kline = await res.json();
+              const closes = kline.map(k => parseFloat(k[4]));
+              const macd = calculateMACD(closes);
+              const macdPositive = macd.macdLine.at(-1) > macd.signalLine.at(-1);
+              const trendUp = closes.at(-1) > closes[0];
+              const percent = (closes.at(-1) - closes.at(-2)) / closes.at(-2) * 100;
+              const score = (trendUp ? 20 : 0) + (macdPositive ? 20 : 0) + (percent > 0.3 ? 10 : 0);
+              return { ...item, macd: macdPositive ? "金叉" : "死叉", trend: trendUp ? "上升" : "震荡", score: score, percent1m: percent.toFixed(2) };
+            } catch {
+              return { ...item, macd: "-", trend: "-", score: 0, percent1m: "-" };
+            }
+          })
+        );
+
+        setScored(scoredList.sort((a, b) => b.score - a.score));
       } catch (err) {
         console.error("Failed to fetch ticker data", err);
       }
@@ -110,7 +131,7 @@ export default function ShortTermBreakoutScanner() {
 
   return (
     <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
-      <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>🔥 热度榜（Top 20 币种）</h2>
+      <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>🔥 热度榜 & 策略信号打分（Top 20 币种）</h2>
       {timestamp && (
         <p style={{ fontSize: "14px", color: "#888" }}>
           更新时间：{new Date(timestamp).toLocaleTimeString()}
@@ -123,15 +144,23 @@ export default function ShortTermBreakoutScanner() {
             <th style={th}>涨幅</th>
             <th style={th}>成交额 (USDT)</th>
             <th style={th}>最新价格</th>
+            <th style={th}>趋势</th>
+            <th style={th}>MACD</th>
+            <th style={th}>1m涨幅</th>
+            <th style={th}>得分</th>
           </tr>
         </thead>
         <tbody>
-          {tickers.map(t => (
+          {scored.map(t => (
             <tr key={t.symbol}>
               <td style={td}>{t.symbol}</td>
               <td style={{ ...td, color: t.change > 0 ? "green" : "red" }}>{t.change.toFixed(2)}%</td>
               <td style={td}>{(t.volume / 1_000_000).toFixed(2)}M</td>
               <td style={td}>{t.lastPrice}</td>
+              <td style={{ ...td, color: t.trend === "上升" ? "green" : "#888" }}>{t.trend}</td>
+              <td style={td}>{t.macd}</td>
+              <td style={td}>{t.percent1m}%</td>
+              <td style={{ ...td, fontWeight: "bold", color: t.score >= 50 ? "green" : t.score >= 30 ? "orange" : "#888" }}>{t.score}</td>
             </tr>
           ))}
         </tbody>

@@ -30,6 +30,8 @@ async function backtest(symbol, config = { macdWeight: 20, trendWeight: 20, perc
     let total = 0;
     let i = 50;
 
+    const results = [];
+
     while (i < data.length - 1) {
       const window = data.slice(i - 50, i);
       const closes = window.map(k => parseFloat(k[4]));
@@ -61,20 +63,27 @@ async function backtest(symbol, config = { macdWeight: 20, trendWeight: 20, perc
             break;
           }
         }
+        results.push({ index: i, score, outcome: outcome || 'unknown', entry, tp, sl });
         i += outcome ? 20 : 1;
       } else {
         i++;
       }
     }
 
-    return { symbol, wins, losses, total, config };
+    return { symbol, wins, losses, total, config, results };
   } catch {
-    return { symbol, wins: 0, losses: 0, total: 0, config };
+    return { symbol, wins: 0, losses: 0, total: 0, config, results: [] };
   }
 }
 
 export default function ShortTermBreakoutScanner() {
-  // ...保持原样，无需修改
+  return (
+    <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
+      <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>
+        📊 策略回测模块 (Beta)
+      </h2>
+      <p>请通过控制台调用 <code>backtest('BTCUSDT')</code> 来测试。</p>
+      <p style={{ marginTop: "1rem", color: '#888' }}>更多可视化结果将陆续加入界面展示中。</p>
+    </div>
+  );
 }
-
-// ...保持页面渲染逻辑不变

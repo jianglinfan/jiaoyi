@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const BINANCE_TICKER_API = "https://api.binance.com/api/v3/ticker/24hr";
 const BINANCE_KLINE_API = "https://api.binance.com/api/v3/klines";
@@ -58,35 +56,48 @@ export default function ShortTermBreakoutScanner() {
   }, []);
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">🚀 超短线突破信号筛选器（实时，每5秒更新）</h2>
-      <p className="text-sm text-muted-foreground mb-2">更新时间：{new Date(timestamp).toLocaleTimeString()}</p>
-      <Card className="shadow-xl">
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>币种</TableHead>
-                <TableHead>涨幅(24h)</TableHead>
-                <TableHead>5分钟涨幅</TableHead>
-                <TableHead>当前价格</TableHead>
-                <TableHead>成交额(USDT)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topBreakouts.map((item) => (
-                <TableRow key={item.symbol}>
-                  <TableCell>{item.symbol}</TableCell>
-                  <TableCell className="text-green-600 font-medium">{item.change.toFixed(2)}%</TableCell>
-                  <TableCell>{item.change5m}%</TableCell>
-                  <TableCell>{item.lastPrice.toFixed(4)}</TableCell>
-                  <TableCell>{(item.volume / 1_000_000).toFixed(2)}M</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <div style={{ padding: "1rem", fontFamily: "Arial, sans-serif" }}>
+      <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "1rem" }}>
+        🚀 超短线突破信号筛选器（实时，每5秒更新）
+      </h2>
+      <p style={{ fontSize: "14px", color: "#888", marginBottom: "1rem" }}>
+        更新时间：{new Date(timestamp).toLocaleTimeString()}
+      </p>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <th style={thStyle}>币种</th>
+              <th style={thStyle}>涨幅(24h)</th>
+              <th style={thStyle}>5分钟涨幅</th>
+              <th style={thStyle}>当前价格</th>
+              <th style={thStyle}>成交额(USDT)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topBreakouts.map((item) => (
+              <tr key={item.symbol}>
+                <td style={tdStyle}>{item.symbol}</td>
+                <td style={{ ...tdStyle, color: "green", fontWeight: "500" }}>{item.change.toFixed(2)}%</td>
+                <td style={tdStyle}>{item.change5m}%</td>
+                <td style={tdStyle}>{item.lastPrice.toFixed(4)}</td>
+                <td style={tdStyle}>{(item.volume / 1_000_000).toFixed(2)}M</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
+
+const thStyle = {
+  textAlign: "left",
+  padding: "10px",
+  borderBottom: "1px solid #ccc",
+};
+
+const tdStyle = {
+  padding: "10px",
+  borderBottom: "1px solid #eee",
+};

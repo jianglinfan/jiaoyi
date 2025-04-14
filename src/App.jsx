@@ -186,3 +186,8 @@ const td = {
   padding: "10px",
   borderBottom: "1px solid #eee",
 };
+const big = enriched.filter(e => e.marketCap >= 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
+const small = enriched.filter(e => e.marketCap < 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
+setBigCaps(big);
+setSmallCaps(small);
+setTimestamp(Date.now());

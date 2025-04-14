@@ -77,13 +77,76 @@ async function backtest(symbol, config = { macdWeight: 20, trendWeight: 20, perc
 }
 
 export default function ShortTermBreakoutScanner() {
+  const [tickers, setTickers] = useState([]);
+  const [timestamp, setTimestamp] = useState(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch(BINANCE_TICKER_API);
+        const data = await res.json();
+        const list = data
+          .filter(item => item.symbol.endsWith("USDT") && !item.symbol.includes("UP") && !item.symbol.includes("DOWN"))
+          .map(item => ({
+            symbol: item.symbol,
+            change: parseFloat(item.priceChangePercent),
+            volume: parseFloat(item.quoteVolume),
+            lastPrice: parseFloat(item.lastPrice),
+          }))
+          .sort((a, b) => b.volume - a.volume)
+          .slice(0, 20);
+
+        setTickers(list);
+        setTimestamp(Date.now());
+      } catch (err) {
+        console.error("Failed to fetch ticker data", err);
+      }
+    }
+
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
-      <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>
-        📊 策略回测模块 (Beta)
-      </h2>
-      <p>请通过控制台调用 <code>backtest('BTCUSDT')</code> 来测试。</p>
-      <p style={{ marginTop: "1rem", color: '#888' }}>更多可视化结果将陆续加入界面展示中。</p>
+      <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>🔥 热度榜（Top 20 币种）</h2>
+      {timestamp && (
+        <p style={{ fontSize: "14px", color: "#888" }}>
+          更新时间：{new Date(timestamp).toLocaleTimeString()}
+        </p>
+      )}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+        <thead>
+          <tr style={{ backgroundColor: "#f0f0f0" }}>
+            <th style={th}>币种</th>
+            <th style={th}>涨幅</th>
+            <th style={th}>成交额 (USDT)</th>
+            <th style={th}>最新价格</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tickers.map(t => (
+            <tr key={t.symbol}>
+              <td style={td}>{t.symbol}</td>
+              <td style={{ ...td, color: t.change > 0 ? "green" : "red" }}>{t.change.toFixed(2)}%</td>
+              <td style={td}>{(t.volume / 1_000_000).toFixed(2)}M</td>
+              <td style={td}>{t.lastPrice}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
+
+const th = {
+  textAlign: "left",
+  padding: "10px",
+  borderBottom: "2px solid #ccc",
+};
+
+const td = {
+  padding: "10px",
+  borderBottom: "1px solid #eee",
+};

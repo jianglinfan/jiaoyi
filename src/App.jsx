@@ -59,20 +59,26 @@ export default function ShortTermBreakoutScanner() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(BINANCE_TICKER_API);
+        const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
         const data = await res.json();
         const filtered = data.filter(item => item.symbol.endsWith("USDT") && !item.symbol.includes("UP") && !item.symbol.includes("DOWN"));
-
+    
         const enriched = await Promise.all(
           filtered.map(async (item) => {
             const marketCap = parseFloat(item.quoteVolume);
             const price = parseFloat(item.lastPrice);
             const volume = parseFloat(item.quoteVolume);
             const change = parseFloat(item.priceChangePercent);
-
+    
             try {
-              const res = await fetch(`${BINANCE_KLINE_API}?symbol=${item.symbol}&interval=1m&limit=100`);
-              const kline = await res.json();
+              const [klineRes, oiRes] = await Promise.all([
+                fetch(`https://api.binance.com/api/v3/klines?symbol=${item.symbol}&interval=1m&limit=100`),
+                fetch(`https://fapi.binance.com/futures/data/openInterest?symbol=${item.symbol}`)
+              ]);
+    
+              const kline = await klineRes.json();
+              const oiData = await oiRes.json();
+    
               const closes = kline.map(k => parseFloat(k[4]));
               const macd = calculateMACD(closes);
               const macdPositive = macd.macdLine.at(-1) > macd.signalLine.at(-1);
@@ -80,12 +86,15 @@ export default function ShortTermBreakoutScanner() {
               const percent = (closes.at(-1) - closes.at(-2)) / closes.at(-2) * 100;
               const score = (trendUp ? 20 : 0) + (macdPositive ? 20 : 0) + (percent > 0.3 ? 10 : 0);
               const signal = macdPositive && trendUp ? "建议买多" : !macdPositive && !trendUp ? "建议卖空" : "观望";
+              const openInterest = parseFloat(oiData.openInterest || 0);
+    
               return {
                 symbol: item.symbol,
                 price,
                 volume,
                 change,
                 marketCap,
+                openInterest,
                 macd: macdPositive ? "金叉" : "死叉",
                 macdColor: macdPositive ? "green" : "red",
                 trend: trendUp ? "上升" : "震荡",
@@ -100,6 +109,7 @@ export default function ShortTermBreakoutScanner() {
                 volume,
                 change,
                 marketCap,
+                openInterest: 0,
                 macd: "-",
                 macdColor: "#888",
                 trend: "-",
@@ -110,7 +120,7 @@ export default function ShortTermBreakoutScanner() {
             }
           })
         );
-
+    
         const big = enriched.filter(e => e.marketCap >= 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
         const small = enriched.filter(e => e.marketCap < 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
         setBigCaps(big);
@@ -120,6 +130,7 @@ export default function ShortTermBreakoutScanner() {
         console.error("Failed to fetch and process data", err);
       }
     }
+    
 
     fetchData();
     const interval = setInterval(fetchData, 10000);
@@ -186,8 +197,3 @@ const td = {
   padding: "10px",
   borderBottom: "1px solid #eee",
 };
-const big = enriched.filter(e => e.marketCap >= 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
-const small = enriched.filter(e => e.marketCap < 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
-setBigCaps(big);
-setSmallCaps(small);
-setTimestamp(Date.now());

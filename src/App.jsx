@@ -111,10 +111,10 @@ export default function ShortTermBreakoutScanner() {
           })
         );
 
-        const big = enriched.filter(e => e.marketCap >= 1_000_000_000);
-        const small = enriched.filter(e => e.marketCap < 1_000_000_000);
-        setBigCaps(big.sort((a, b) => b.score - a.score));
-        setSmallCaps(small.sort((a, b) => b.score - a.score));
+        const big = enriched.filter(e => e.marketCap >= 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
+        const small = enriched.filter(e => e.marketCap < 1_000_000_000).sort((a, b) => b.score - a.score).slice(0, 10);
+        setBigCaps(big);
+        setSmallCaps(small);
         setTimestamp(Date.now());
       } catch (err) {
         console.error("Failed to fetch and process data", err);
